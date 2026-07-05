@@ -1,78 +1,69 @@
 #!/bin/bash
 
-# ==============================================================================
-# SCRIPT 2
-# OBJETIVO: Limpieza automatizada y manejo inteligente de un reporte propio.
-# ==============================================================================
+DIR_LOGS_SUITE="/var/log/suite_ti"
 
-# --- CONFIGURACIÓN DE VARIABLES ---
-DIRECTORIO_TARGET="/var/tmp/temporales_ti"
-REPORT_LIMPIEZA="reporte_limpieza.txt"  # Nuevo archivo de texto exclusivo
-DIAS_RETENCION=7
+FECHA_HORA=$(date '+%Y-%m-%d_%H-%M-%S')
+LOG_OPERACION="$DIR_LOGS_SUITE/${FECHA_HORA}_depuracion_temporales.log"
+LOG_ERROR_CRITICO="$DIR_LOGS_SUITE/${FECHA_HORA}_ERROR_DEPURACION.log"
+
+REPORT_LIMPIEZA="/home/elias/Reportes/reporte_limpieza.txt"
+DIAS_RETENCION=30
 MAX_REINTENTOS=3
 
-# --- CONDICIONAL: MANEJO DEL ARCHIVO DE REPORTE ---
-# Comprobamos si no existe el archivo usando
+capturar_error() {
+    local comando_fallido="$1"
+    echo "==================================================" > "$LOG_ERROR_CRITICO"
+    echo "[FALLO CRÍTICO - $FECHA_HORA]" >> "$LOG_ERROR_CRITICO"
+    echo "Script: gestor_temporales.sh" >> "$LOG_ERROR_CRITICO"
+    echo "Acción fallida: $comando_fallido" >> "$LOG_ERROR_CRITICO"
+    echo "==================================================" >> "$LOG_ERROR_CRITICO"
+}
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iniciando escaneo en /var/log, /var/tmp y /tmp..." > "$LOG_OPERACION"
+
 if [ ! -f "$REPORT_LIMPIEZA" ]; then
-    # Si no existe, lo crea
     echo "==================================================" > "$REPORT_LIMPIEZA"
     echo "       NUEVO REPORTE DE LIMPIEZA DE ARCHIVOS       " >> "$REPORT_LIMPIEZA"
     echo "==================================================" >> "$REPORT_LIMPIEZA"
 else
-    # Si ya existe, no lo borra; solo añade una marca de separación por fecha de reporte
     echo -e "\n--------------------------------------------------" >> "$REPORT_LIMPIEZA"
 fi
-
-# Añadimos la fecha exacta de esta ejecución al reporte
 echo "Fecha de ejecución: $(date '+%Y-%m-%d %H:%M:%S')" >> "$REPORT_LIMPIEZA"
 echo "--------------------------------------------------" >> "$REPORT_LIMPIEZA"
 
-# --- SIMULACIÓN DE ENTORNO ---
-if [ ! -d "$DIRECTORIO_TARGET" ]; then
-    mkdir -p "$DIRECTORIO_TARGET"
-    touch "$DIRECTORIO_TARGET/reciente.tmp"
-    touch -d "10 days ago" "$DIRECTORIO_TARGET/basura_antigua.tmp"
-    touch -d "15 days ago" "$DIRECTORIO_TARGET/error_viejo.log"
+# BÚSQUEDA MULTI-DIRECTORIO (Protegiendo los logs nuevos de nuestra suite)
+ARCHIVOS_A_ELIMINAR=$(find /var/log/suite_ti /var/tmp /tmp -type f \( -name "*.tmp" -o -name "*.log" \) -mtime +$DIAS_RETENCION 2>"$LOG_OPERACION")
+
+if [ $? -ne 0 ]; then
+    capturar_error "Búsqueda find en directorios del sistema"
+    exit 1
 fi
-
-# Ajustamos permisos del directorio objetivo
-chmod 755 "$DIRECTORIO_TARGET"
-
-# --- BUSQUEDA FILTRADA POR TIEMPO ---
-echo "[-] Buscando archivos temporales obsoletos..."
-ARCHIVOS_A_ELIMINAR=$(find "$DIRECTORIO_TARGET" -type f \( -name "*.tmp" -o -name "*.log" \) -mtime +$DIAS_RETENCION)
 
 if [ -z "$ARCHIVOS_A_ELIMINAR" ]; then
     echo "[OK] No se encontraron archivos que superen los $DIAS_RETENCION días." >> "$REPORT_LIMPIEZA"
-    echo "[-] No hay archivos antiguos para limpiar."
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Escaneo finalizado. Sin archivos obsoletos." >> "$LOG_OPERACION"
     exit 0
-fi
+else
+    for archivo in $ARCHIVOS_A_ELIMINAR; do
+        intento=1
+        borrado_exitoso=false
 
-
-# --- PASO 3: BUCLE DE ELIMINACIÓN CON REINTENTOS ---
-for archivo in $ARCHIVOS_A_ELIMINAR; do
-    echo "Evaluando para eliminación: $(basename "$archivo")"
-
-    intento=1
-    borrado_exitoso=false
-
-    while [ $intento -le $MAX_REINTENTOS ] && [ "$borrado_exitoso" = false ]; do
-        if [ -f "$archivo" ]; then
-            # Intentamos borrar y redirigimos errores al nuevo txt
-            rm -f "$archivo" 2>> "$REPORT_LIMPIEZA"
-
-            if [ $? -eq 0 ]; then
-                echo "[ELIMINADO] $(basename "$archivo") (Antigüedad > $DIAS_RETENCION días)" >> "$REPORT_LIMPIEZA"
-                borrado_exitoso=true
-            else
-                echo "[REINTENTO $intento] Error al borrar $(basename "$archivo")" >> "$REPORT_LIMPIEZA"
-                intento=$((intento + 1))
-                sleep 1
-            fi
-        else
-            borrado_exitoso=true
-        fi
+        while [ $intento -le $MAX_REINTENTOS ] && [ "$borrado_exitoso" = false ]; do
+                if [ -f "$archivo" ]; then
+                        fecha_modificacion=$(stat -c '%y' "$archivo" | cut -d' ' -f1)
+                        rm -f "$archivo" 2>> "$REPORT_LIMPIEZA"
+                        if [ $? -eq 0 ]; then
+                                echo "[ELIMINADO] $(basename "$archivo") | Modificado por última vez: $fecha_modificacion" >> "$REPORT_LIMPIEZA"
+                                echo "[$(date '+%Y-%m-%d %H:%M:%S')] Borrado con éxito: $archivo" >> "$LOG_OPERACION"
+                                borrado_exitoso=true
+                        else
+                                intento=$((intento + 1))
+                                capturar_error "No se pudo eliminar el archivo protegido o bloqueado: $archivo"
+                                echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Imposible borrar $archivo" >> "$LOG_OPERACION"
+                        fi
+                else
+                        borrado_exitoso=true
+                fi
+        done
     done
-done
-
-echo "[-] Limpieza concluida. Historial registrado en: $REPORT_LIMPIEZA"
+fi
