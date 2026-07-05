@@ -32,4 +32,4 @@ Desplázate hasta el final de la página y pega las siguientes dos líneas de pr
 */5 * * * * /home/elias/Scripts/gestor_temporales.sh
 
 ### Paso 5: Verificación de resultados
-Puedes revisar el estado de tus reportes generados en cualquier momento ejecutando el script sistema_reportes.sh y revisar los reportes o el reporte general del funcionamiento de la automatización.
+Puedes revisar el estado de tus reportes generados en cualquier momento ejecutando el script sistema_reportes.sh como root y revisar los reportes o el reporte general del funcionamiento de la automatización.
