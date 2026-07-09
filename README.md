@@ -136,7 +136,7 @@ En los submenús, puedes escribir el número de la opción o la palabra volver (
 
 🔁 Flujo de trabajo recomendado
 
-bash# 1. Primera vez: preparar el entorno
+# 1. Primera vez: preparar el entorno
 sudo chmod +x sistema.sh gestor_archivos.sh automatizacion.sh menu.sh
 
 # 2. Ejecutar el diagnóstico del sistema
@@ -150,8 +150,3 @@ sudo ./automatizacion.sh
 
 # 5. Desde ahora, usar el menú para todo lo demás
 sudo ./menu.sh
-
-
-🐞 Problemas conocidos y soluciones aplicadas
-
-ProblemaSolución aplicadaNombres de archivo con espacios se cortaban al limpiar temporalesSe reemplazó for archivo in $lista por while IFS= read -rLos logs de error se sobrescribían en cada ejecuciónSe cambió la redirección de > a >> en capturar_error()Los reportes se sobrescribían entre ejecucionesCada reporte ahora incluye la fecha y hora exacta en el nombre del archivo, dentro de una carpeta historico_<script>/Un fallo en el backup detenía toda la limpieza de temporalesSe separó la lógica para que limpiar_temporales se ejecute siempre, sin depender de los demás pasosEl menú se quedaba en bucle si la entrada terminaba inesperadamente (EOF)Se agregó manejo explícito de fin de entrada para salir limpiamente
