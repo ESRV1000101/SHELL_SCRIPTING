@@ -32,38 +32,10 @@ automatizacion.sh modifica el crontab del usuario que ejecuta el script.
 
 Si ejecutas cualquier script sin sudo, es probable que falle al crear /var/log/suite_ti/ o al leer algún archivo de /etc/, y el error quedará registrado en el log correspondiente.
 
-bashsudo ./sistema.sh
+sudo ./sistema.sh
 sudo ./gestor_archivos.sh
 sudo ./automatizacion.sh
 sudo ./menu.sh
-
-
-🔧 Instalación / Preparación
-
-
-Clona el repositorio en el servidor Linux:
-
-
-bash   git clone <URL-del-repositorio> suite-ti
-   cd suite-ti
-
-
-Da permisos de ejecución a los 4 scripts:
-
-
-bash   sudo chmod +x sistema.sh gestor_archivos.sh automatizacion.sh menu.sh
-
-
-Verifica que tengas instalados los paquetes necesarios (normalmente ya vienen en Ubuntu/Debian):
-
-
-bash   sudo apt update
-   sudo apt install -y cron gawk
-
-
-(Opcional) Ajusta las rutas de DIR_REPORTES y DIR_BACKUP_BASE en sistema.sh y gestor_archivos.sh si tu usuario no es elias.
-
-
 
 1️⃣ sistema.sh — Script de entorno del sistema
 
@@ -71,17 +43,9 @@ Qué hace: recolecta y reporta el estado del servidor (usuario, IP, sistema oper
 
 Uso
 
-bashsudo ./sistema.sh [umbral_disco]
-
-ParámetroObligatorioDescripciónValor por defectoumbral_discoNoPorcentaje de uso de disco a partir del cual se genera una alerta crítica80
-
-Ejemplos
-
-bashsudo ./sistema.sh          # Usa el umbral por defecto (80%)
-sudo ./sistema.sh 90       # Genera alerta solo si el disco supera el 90%
+sudo ./sistema.sh
 
 Salida
-
 
 Reporte nuevo en /home/elias/Reportes/historico_sistema/reporte_sistema_<fecha_hora>.txt (uno distinto por cada ejecución, para poder comparar).
 Log de operación en /var/log/suite_ti/<fecha_hora>_monitoreo_sistema.log.
@@ -102,42 +66,28 @@ Limpia archivos .tmp, .log y .txt antiguos en /var/log, /var/tmp, /tmp y en la c
 
 Uso
 
-bashsudo ./gestor_archivos.sh [dias_retencion]
-
-ParámetroObligatorioDescripciónValor por defectodias_retencionNoAntigüedad (en días) a partir de la cual un archivo temporal/log/reporte se elimina30
-
-Ejemplos
-
-bashsudo ./gestor_archivos.sh          # Retención por defecto (30 días)
-sudo ./gestor_archivos.sh 15       # Elimina archivos con más de 15 días
+sudo ./gestor_archivos.sh
 
 Salida
-
 
 Reporte nuevo en /home/elias/Reportes/historico_gestor/reporte_gestion_archivos_<fecha_hora>.txt.
 Backup del día en /home/elias/Backups/<fecha>/.
 Log de operación en /var/log/suite_ti/<fecha_hora>_gestor_archivos.log.
 Si algo falla, log de error en /var/log/suite_ti/<fecha_hora>_ERROR_GESTOR.log.
 
-
-
 Nota: si la creación del backup falla (por ejemplo, por permisos), la limpieza de temporales se ejecuta igual — son pasos independientes.
-
-
 
 
 3️⃣ automatizacion.sh — Automatización con cron y awk
 
 Qué hace:
 
-
 Muestra un menú con los demás scripts .sh de la carpeta y programa en cron la ejecución diaria (2:00 a.m.) del que elijas — sin duplicar la tarea si ya estaba programada.
 Genera un reporte consolidado analizando con awk todos los logs de operación que ha generado la suite (ejecuciones totales, alertas detectadas, última actividad).
 
-
 Uso
 
-bashsudo ./automatizacion.sh
+sudo ./automatizacion.sh
 
 No recibe parámetros — siempre te mostrará el menú para elegir qué script programar:
 
@@ -148,22 +98,15 @@ Selecciona el número del script a programar en cron:
 
 Salida
 
-
 Tarea agregada al crontab de root (ya que se ejecuta con sudo). Verifícalo con:
 
-
-bash  sudo crontab -l
-
+sudo crontab -l
 
 Respaldo del crontab anterior en /var/log/suite_ti/<fecha_hora>_crontab_respaldo.bak.
 Reporte nuevo en /home/elias/Reportes/historico_automatizacion/reporte_consolidado_automatizacion_<fecha_hora>.txt.
 Log de operación en /var/log/suite_ti/<fecha_hora>_automatizacion.log.
 
-
-
 Importante: como se ejecuta con sudo, la tarea se programa en el crontab de root, no en el de tu usuario normal. Esto es intencional: así la tarea programada también tendrá permisos para escribir en /var/log/suite_ti/ y leer archivos de /etc/ cuando se ejecute automáticamente de madrugada.
-
-
 
 
 4️⃣ menu.sh — Panel central de la suite
